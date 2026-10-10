@@ -17,6 +17,35 @@ const MOCK_SRC = path.join(OUT_DIR, '_mock-source.mp4');
 
 if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
 
+// Tìm thư mục giao diện: chuẩn là public/, fallback là thư mục gốc
+// (phòng trường hợp upload nhầm file flat, không theo cấu trúc thư mục)
+const PUBLIC_DIR = fs.existsSync(path.join(ROOT, 'public', 'index.html')) ? path.join(ROOT, 'public') : ROOT;
+
+// Tự kiểm tra lúc khởi động để báo lỗi dễ hiểu
+if (!fs.existsSync(path.join(PUBLIC_DIR, 'index.html'))) {
+  console.error('CẢNH BÁO: không tìm thấy index.html (đã tìm trong public/ và thư mục gốc) — web sẽ báo "Cannot GET /".');
+} else if (PUBLIC_DIR === ROOT) {
+  console.log('Lưu ý: dùng giao diện ở thư mục gốc (không tìm thấy public/).');
+}
+async function ensureMockSource() {
+  if (!MOCK) return;
+  // nếu file mẫu nằm ở root do upload nhầm flat thì chuyển vào output/
+  const rootMock = path.join(ROOT, '_mock-source.mp4');
+  if (!fs.existsSync(MOCK_SRC) && fs.existsSync(rootMock)) {
+    fs.copyFileSync(rootMock, MOCK_SRC);
+    console.log('Đã chuyển _mock-source.mp4 từ thư mục gốc vào output/.');
+  }
+  if (fs.existsSync(MOCK_SRC)) return;
+  try {
+    console.log('Chưa có clip demo mẫu, đang tự tạo bằng ffmpeg...');
+    await execFileP('ffmpeg', ['-y', '-v', 'error', '-f', 'lavfi',
+      '-i', 'testsrc2=size=1080x1920:rate=30:duration=8', '-pix_fmt', 'yuv420p', MOCK_SRC]);
+    console.log('Đã tạo xong clip demo mẫu.');
+  } catch (e) {
+    console.error('Không tự tạo được clip demo:', e.message);
+  }
+}
+
 // Bảng giá Veo 3.1 (USD/giây, đã gồm audio) — kiểm tra 10/2026
 const MODELS = {
   'veo-3.1-lite-generate-preview':   { label: 'Veo 3.1 Lite',     rates: { '720p': 0.05, '1080p': 0.08 } },
@@ -200,7 +229,7 @@ async function assemble(jobIds, extraFiles, name) {
 // ---------- API ----------
 const app = express();
 app.use(express.json({ limit: '2mb' }));
-app.use(express.static(path.join(ROOT, 'public')));
+app.use(express.static(PUBLIC_DIR));
 app.use('/output', express.static(OUT_DIR));
 
 app.get('/api/status', (req, res) => {
@@ -317,6 +346,8 @@ app.delete('/api/uploads/:file', (req, res) => {
   res.json({ ok: true });
 });
 
-app.listen(PORT, process.env.HOST || '127.0.0.1', () => {
-  console.log(`Veo Studio chạy tại http://127.0.0.1:${PORT} ${MOCK ? '(MOCK — demo, chưa tốn tiền)' : '(LIVE — Veo API thật)'}`);
+ensureMockSource().then(() => {
+  app.listen(PORT, process.env.HOST || '127.0.0.1', () => {
+    console.log(`Veo Studio chạy tại http://127.0.0.1:${PORT} ${MOCK ? '(MOCK — demo, chưa tốn tiền)' : '(LIVE — Veo API thật)'}`);
+  });
 });

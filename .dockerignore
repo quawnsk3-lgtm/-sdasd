@@ -1,0 +1,5 @@
+node_modules
+.env
+output/*.mp4
+!output/_mock-source.mp4
+*.zip

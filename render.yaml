@@ -1,0 +1,15 @@
+# Render Blueprint — deploy Veo Studio bằng 1 click sau khi đã push code lên GitHub
+services:
+  - type: web
+    name: veo-studio
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      # PORT: Render tự set, app đã đọc từ biến môi trường
+      - key: MOCK_MODE
+        value: 0
+      - key: GEMINI_API_KEY
+        sync: false # nhập tay trên dashboard Render sau khi deploy

@@ -46,11 +46,12 @@ async function ensureMockSource() {
   }
 }
 
-// Bảng giá Veo 3.1 (USD/giây, đã gồm audio) — kiểm tra 10/2026
+// Bảng giá video (USD/giây, đã gồm audio) — kiểm tra 10/2026
 const MODELS = {
-  'veo-3.1-lite-generate-preview':   { label: 'Veo 3.1 Lite',     rates: { '720p': 0.05, '1080p': 0.08 } },
-  'veo-3.1-fast-generate-preview':   { label: 'Veo 3.1 Fast',     rates: { '720p': 0.10, '1080p': 0.12 } },
-  'veo-3.1-generate-preview':        { label: 'Veo 3.1 Standard', rates: { '720p': 0.40, '1080p': 0.40 } },
+  'veo-3.1-lite-generate-preview': { type: 'veo', label: 'Veo 3.1 Lite',  rates: { '720p': 0.05, '1080p': 0.08 } },
+  'veo-3.1-fast-generate-preview': { type: 'veo', label: 'Veo 3.1 Fast',  rates: { '720p': 0.10, '1080p': 0.12 } },
+  'veo-3.1-generate-preview':       { type: 'veo', label: 'Veo 3.1 Standard', rates: { '720p': 0.40, '1080p': 0.40 } },
+  'gemini-omni-1.1-flash':          { type: 'omni', label: 'Gemini Omni Flash', rates: { '720p': 0.10, '1080p': 0.15 }, note: 'rẻ nhất cho clip có thoại' },
 };
 const CLIP_SECONDS = 8; // Veo 3.1 gen clip 8s
 const MAX_CONCURRENT = 2;
@@ -113,6 +114,98 @@ async function downloadUri(uri, dest) {
 }
 
 // ---------- worker ----------
+async function processVeoJob(job) {
+  const client = getAI();
+  if (job.status === 'queued' || !job.operationName) {
+    job.status = 'working';
+    job.startedAt = job.startedAt || Date.now();
+    job.note = 'Đang gửi yêu cầu lên Veo…';
+    const op = await client.models.generateVideos({
+      model: job.model,
+      prompt: job.prompt,
+      config: {
+        aspectRatio: job.aspectRatio,
+        resolution: job.resolution,
+        negativePrompt: job.negativePrompt || undefined,
+        enhancePrompt: job.enhancePrompt !== false,
+        personGeneration: 'allow_adult',
+        numberOfVideos: 1,
+      },
+    });
+    job.operationName = op.name;
+    saveJobs();
+  }
+  job.note = `Veo đang render… ${Math.round((Date.now() - job.startedAt) / 1000)}s`;
+  const op = await client.operations.getVideosOperation({ operation: { name: job.operationName } });
+  const elapsedMin = (Date.now() - job.startedAt) / 60000;
+  job.progress = Math.min(95, Math.round((elapsedMin / 4) * 100)); // ước lượng ~4 phút
+  if (op.done) {
+    const gen = op.response && op.response.generatedVideos;
+    if (!gen || !gen.length) throw new Error('Veo trả về rỗng (có thể bị từ chối bởi bộ lọc nội dung)');
+    job.videos = [];
+    for (let i = 0; i < gen.length; i++) {
+      const uri = gen[i].video && gen[i].video.uri;
+      if (!uri) throw new Error('Không lấy được link tải video');
+      const dest = path.join(OUT_DIR, `${job.id}-${i}.mp4`);
+      const bytes = await downloadUri(uri, dest);
+      job.videos.push({ file: `${job.id}-${i}.mp4`, bytes });
+    }
+    job.status = 'done';
+    job.progress = 100;
+    job.note = 'Hoàn tất';
+  }
+}
+
+// Gemini Omni Flash — dùng Interactions API (khác đường với Veo)
+async function processOmniJob(job) {
+  const client = getAI();
+  if (job.status === 'queued' || !job.operationName) {
+    job.status = 'working';
+    job.startedAt = job.startedAt || Date.now();
+    job.note = 'Đang gửi yêu cầu lên Omni…';
+    const ix = await client.interactions.create({
+      model: job.model,
+      input: job.prompt,
+      generation_config: { video_config: { task: 'text_to_video' } },
+      response_format: {
+        type: 'video',
+        aspect_ratio: job.aspectRatio,
+        resolution: job.resolution,
+        duration: `${CLIP_SECONDS}s`,
+      },
+    });
+    job.operationName = ix.id || ix.name;
+    if (!job.operationName) throw new Error('Omni không trả về interaction id');
+    saveJobs();
+  }
+  job.note = `Omni đang render… ${Math.round((Date.now() - job.startedAt) / 1000)}s`;
+  const ix = await client.interactions.get(job.operationName);
+  const elapsedMin = (Date.now() - job.startedAt) / 60000;
+  job.progress = Math.min(95, Math.round((elapsedMin / 3) * 100)); // ước lượng ~3 phút
+  const out = ix && ix.output_video;
+  if (out && (out.data || out.uri)) {
+    const dest = path.join(OUT_DIR, `${job.id}-0.mp4`);
+    let bytes;
+    if (out.data) {
+      const buf = Buffer.from(out.data, 'base64');
+      fs.writeFileSync(dest, buf);
+      bytes = buf.length;
+    } else {
+      bytes = await downloadUri(out.uri, dest);
+    }
+    job.videos = [{ file: `${job.id}-0.mp4`, bytes }];
+    job.status = 'done';
+    job.progress = 100;
+    job.note = 'Hoàn tất';
+  } else {
+    const st = (ix && ix.status ? String(ix.status) : '').toUpperCase();
+    if (/FAIL|ERROR|CANCEL/.test(st)) {
+      throw new Error(`Omni báo lỗi (status: ${ix.status}) — thử sửa prompt rồi gen lại`);
+    }
+    // chưa xong → chờ tick tiếp theo
+  }
+}
+
 async function processJob(job) {
   if (job.status === 'done' || job.status === 'failed') return;
   try {
@@ -134,45 +227,9 @@ async function processJob(job) {
         job.note = 'Xong (demo — chưa tốn tiền)';
       }
     } else {
-      const client = getAI();
-      if (job.status === 'queued' || !job.operationName) {
-        job.status = 'working';
-        job.startedAt = job.startedAt || Date.now();
-        job.note = 'Đang gửi yêu cầu lên Veo…';
-        const op = await client.models.generateVideos({
-          model: job.model,
-          prompt: job.prompt,
-          config: {
-            aspectRatio: job.aspectRatio,
-            resolution: job.resolution,
-            negativePrompt: job.negativePrompt || undefined,
-            enhancePrompt: job.enhancePrompt !== false,
-            personGeneration: 'allow_adult',
-            numberOfVideos: 1,
-          },
-        });
-        job.operationName = op.name;
-        saveJobs();
-      }
-      job.note = `Veo đang render… ${Math.round((Date.now() - job.startedAt) / 1000)}s`;
-      const op = await client.operations.getVideosOperation({ operation: { name: job.operationName } });
-      const elapsedMin = (Date.now() - job.startedAt) / 60000;
-      job.progress = Math.min(95, Math.round((elapsedMin / 4) * 100)); // ước lượng ~4 phút
-      if (op.done) {
-        const gen = op.response && op.response.generatedVideos;
-        if (!gen || !gen.length) throw new Error('Veo trả về rỗng (có thể bị từ chối bởi bộ lọc nội dung)');
-        job.videos = [];
-        for (let i = 0; i < gen.length; i++) {
-          const uri = gen[i].video && gen[i].video.uri;
-          if (!uri) throw new Error('Không lấy được link tải video');
-          const dest = path.join(OUT_DIR, `${job.id}-${i}.mp4`);
-          const bytes = await downloadUri(uri, dest);
-          job.videos.push({ file: `${job.id}-${i}.mp4`, bytes });
-        }
-        job.status = 'done';
-        job.progress = 100;
-        job.note = 'Hoàn tất';
-      }
+      const modelType = (MODELS[job.model] || {}).type || 'veo';
+      if (modelType === 'omni') await processOmniJob(job);
+      else await processVeoJob(job);
     }
   } catch (e) {
     job.status = 'failed';
@@ -237,7 +294,7 @@ app.get('/api/status', (req, res) => {
     mock: MOCK,
     hasKey: !!API_KEY,
     clipSeconds: CLIP_SECONDS,
-    models: Object.fromEntries(Object.entries(MODELS).map(([k, v]) => [k, { label: v.label, rates: v.rates }])),
+    models: Object.fromEntries(Object.entries(MODELS).map(([k, v]) => [k, { label: v.label, rates: v.rates, note: v.note || '' }])),
   });
 });
 
@@ -303,6 +360,13 @@ app.post('/api/assemble', async (req, res) => {
 });
 
 // ---------- upload clip có sẵn (vd: gen tay từ Flow Pro) ----------
+async function getDuration(file) {
+  try {
+    const out = await execFileP('ffprobe', ['-v', 'error', '-show_entries', 'format=duration',
+      '-of', 'default=noprint_wrappers=1:nokey=1', file]);
+    return Math.round(parseFloat(out.trim()) * 10) / 10 || 0;
+  } catch { return 0; }
+}
 const upload = multer({
   storage: multer.diskStorage({
     destination: OUT_DIR,
@@ -319,23 +383,27 @@ const upload = multer({
 });
 
 app.post('/api/upload', (req, res) => {
-  upload.array('clips', 10)(req, res, (err) => {
+  upload.array('clips', 10)(req, res, async (err) => {
     if (err) return res.status(400).json({ error: err.message });
-    res.json({
-      ok: true,
-      files: (req.files || []).map((f) => ({ file: f.filename, bytes: f.size, url: `/output/${f.filename}` })),
-    });
+    const out = [];
+    for (const f of req.files || []) {
+      out.push({ file: f.filename, bytes: f.size, url: `/output/${f.filename}`,
+        duration: await getDuration(path.join(OUT_DIR, f.filename)) });
+    }
+    res.json({ ok: true, files: out });
   });
 });
 
-app.get('/api/uploads', (req, res) => {
-  const list = fs.readdirSync(OUT_DIR)
-    .filter((f) => f.startsWith('upload-') && /\.mp4$/i.test(f))
-    .map((f) => {
-      const st = fs.statSync(path.join(OUT_DIR, f));
-      return { file: f, bytes: st.size, url: `/output/${f}`, createdAt: st.mtimeMs };
-    })
-    .sort((a, b) => b.createdAt - a.createdAt);
+app.get('/api/uploads', async (req, res) => {
+  const names = fs.readdirSync(OUT_DIR).filter((f) => f.startsWith('upload-') && /\.mp4$/i.test(f));
+  const list = [];
+  for (const f of names) {
+    const full = path.join(OUT_DIR, f);
+    const st = fs.statSync(full);
+    list.push({ file: f, bytes: st.size, url: `/output/${f}`,
+      createdAt: st.mtimeMs, duration: await getDuration(full) });
+  }
+  list.sort((a, b) => b.createdAt - a.createdAt);
   res.json(list);
 });
 

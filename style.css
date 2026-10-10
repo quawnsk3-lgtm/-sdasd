@@ -53,5 +53,15 @@ button.danger { background: transparent; border: 1px solid #5a2b2b; color: #ff8a
 .upfile video { width: 160px; border-radius: 8px; background: #000; }
 .upfile .row { display: flex; gap: 10px; align-items: center; margin-top: 8px; flex-wrap: wrap; font-size: 13px; color: #9aa0b4; }
 .upfile .fname { font-size: 13px; word-break: break-all; }
+.clip { display: flex; gap: 12px; align-items: center; background: #0f1115; border: 1px solid #262b38; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+.clip .pick { display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0; }
+.clip .pick input { width: 20px; height: 20px; accent-color: #4f7cff; cursor: pointer; }
+.clip .ord { background: #4f7cff; color: #fff; font-size: 12px; font-weight: 700; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; }
+.clip video { width: 110px; border-radius: 8px; background: #000; }
+.clip .info { flex: 1; min-width: 0; }
+.clip .fname { font-size: 13px; word-break: break-all; }
+.clip .meta { font-size: 12px; color: #9aa0b4; margin: 2px 0 6px; }
+.clip .actions { display: flex; gap: 6px; }
+.clip .actions .ghost:disabled { opacity: .3; cursor: default; }
 footer { text-align: center; color: #6b7288; font-size: 12px; margin-top: 30px; }
 @media (max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }

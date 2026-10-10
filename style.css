@@ -1,0 +1,57 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #0f1115; color: #e8eaf0; line-height: 1.5; }
+.wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
+header { text-align: center; margin-bottom: 20px; }
+header h1 { font-size: 32px; }
+.sub { color: #9aa0b4; margin-top: 4px; }
+.card { background: #171a21; border: 1px solid #262b38; border-radius: 14px; padding: 20px; margin-bottom: 20px; }
+.card h2 { font-size: 18px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+label { display: block; font-size: 13px; color: #9aa0b4; margin: 12px 0 6px; }
+textarea, input[type=text], input[type=number], select {
+  width: 100%; background: #0f1115; border: 1px solid #2c3242; color: #e8eaf0;
+  border-radius: 8px; padding: 10px 12px; font-size: 14px;
+}
+textarea:focus, input:focus, select:focus { outline: none; border-color: #4f7cff; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+.check { display: flex; align-items: center; gap: 8px; color: #e8eaf0; cursor: pointer; }
+.check input { width: auto; }
+.cost { background: #101827; border: 1px dashed #4f7cff; border-radius: 8px; padding: 10px 14px; margin: 14px 0; font-size: 14px; }
+.cost b { color: #7dffb0; }
+button.primary { background: #4f7cff; color: #fff; border: none; border-radius: 10px; padding: 12px 22px; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; }
+button.primary:hover { background: #3d68e8; }
+button.primary:disabled { opacity: .5; cursor: wait; }
+button.ghost { background: transparent; border: 1px solid #2c3242; color: #9aa0b4; border-radius: 8px; padding: 4px 12px; cursor: pointer; }
+button.danger { background: transparent; border: 1px solid #5a2b2b; color: #ff8a8a; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+.hint { font-size: 12px; color: #6b7288; margin-top: 8px; }
+.banner { border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 14px; }
+.banner.mock { background: #2a2113; border: 1px solid #8a6d2f; color: #ffd98a; }
+.banner.live { background: #12301c; border: 1px solid #2f8a4d; color: #7dffb0; }
+.hidden { display: none; }
+.job { background: #0f1115; border: 1px solid #262b38; border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+.job .meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.job .prompt { font-size: 14px; margin-bottom: 8px; }
+.badge { font-size: 12px; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+.badge.queued { background: #2a2f3d; color: #9aa0b4; }
+.badge.working { background: #2a2113; color: #ffd98a; }
+.badge.done { background: #12301c; color: #7dffb0; }
+.badge.failed { background: #3d1a1a; color: #ff8a8a; }
+.bar { height: 8px; background: #22262f; border-radius: 4px; overflow: hidden; margin: 8px 0; }
+.bar > div { height: 100%; background: #4f7cff; transition: width .5s; }
+.job video { width: 180px; border-radius: 8px; margin-top: 8px; background: #000; }
+.job .row { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; font-size: 13px; color: #9aa0b4; }
+.job .err { color: #ff8a8a; font-size: 13px; margin-top: 6px; }
+.job a.dl { color: #4f7cff; text-decoration: none; font-size: 13px; }
+.empty { color: #6b7288; text-align: center; padding: 20px; }
+#assembleBar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; background: #101827; border: 1px solid #2c3242; padding: 10px 14px; border-radius: 10px; }
+#assembleBar input { flex: 1; min-width: 160px; }
+#assembleBar button { width: auto; }
+#assembleResult video { width: 220px; border-radius: 8px; margin-top: 8px; }
+.uploadrow { display: flex; gap: 10px; margin: 12px 0; align-items: center; }
+.uploadrow input[type=file] { flex: 1; padding: 8px; }
+.uploadrow button { width: auto; white-space: nowrap; }
+.upfile { background: #0f1115; border: 1px solid #262b38; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+.upfile video { width: 160px; border-radius: 8px; background: #000; }
+.upfile .row { display: flex; gap: 10px; align-items: center; margin-top: 8px; flex-wrap: wrap; font-size: 13px; color: #9aa0b4; }
+.upfile .fname { font-size: 13px; word-break: break-all; }
+footer { text-align: center; color: #6b7288; font-size: 12px; margin-top: 30px; }
+@media (max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }

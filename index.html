@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Veo Studio — Nhập prompt, nhận video AI</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎬 Veo Studio</h1>
+    <p class="sub">Nhập prompt → Veo 3.1 gen footage → ghép thành video TikTok 9:16</p>
+  </header>
+
+  <div id="modeBanner" class="banner hidden"></div>
+
+  <section class="card">
+    <h2>Tạo video mới</h2>
+    <label>Prompt (tiếng Anh cho kết quả tốt nhất)</label>
+    <textarea id="prompt" rows="4" placeholder="VD: Cinematic close-up of a young woman lighting incense at a Thai temple, slow push-in, warm candlelight, photorealistic"></textarea>
+
+    <div class="grid2">
+      <div>
+        <label>Model</label>
+        <select id="model"></select>
+      </div>
+      <div>
+        <label>Khổ video</label>
+        <select id="aspect">
+          <option value="9:16" selected>9:16 — dọc (TikTok)</option>
+          <option value="16:9">16:9 — ngang</option>
+        </select>
+      </div>
+      <div>
+        <label>Độ phân giải</label>
+        <select id="resolution">
+          <option value="720p">720p — rẻ, test nhanh</option>
+          <option value="1080p" selected>1080p — nét</option>
+        </select>
+      </div>
+      <div>
+        <label>Số clip (1–4)</label>
+        <input id="count" type="number" min="1" max="4" value="1">
+      </div>
+    </div>
+
+    <label>Negative prompt (cái KHÔNG muốn xuất hiện)</label>
+    <input id="negative" type="text" placeholder="VD: text, subtitles, watermark, blurry, deformed hands">
+
+    <label class="check"><input id="enhance" type="checkbox" checked> Để Veo tự làm giàu prompt (enhancePrompt)</label>
+
+    <div class="cost" id="costBox">Ước tính: —</div>
+    <button id="genBtn" class="primary">🚀 Tạo video</button>
+    <p class="hint">Mỗi clip dài 8s, có âm thanh gốc. Chỉ tính tiền khi gen thành công.</p>
+  </section>
+
+  <section class="card">
+    <h2>Danh sách job <button id="refreshBtn" class="ghost">↻</button></h2>
+    <div id="assembleBar" class="hidden">
+      <span id="selCount">Đã chọn 0 clip</span>
+      <input id="finalName" type="text" placeholder="Tên file cuối (vd: video-tiktok-1)">
+      <button id="assembleBtn" class="primary">🔗 Ghép thành 1 video</button>
+    </div>
+    <div id="assembleResult"></div>
+    <div id="jobs"><p class="empty">Chưa có job nào. Nhập prompt ở trên để bắt đầu.</p></div>
+  </section>
+
+  <section class="card">
+    <h2>📤 Upload clip có sẵn</h2>
+    <p class="hint">Gen clip trên web Flow bằng gói Pro của anh → tải file về máy → upload vào đây → tick chọn để ghép chung với clip từ API.</p>
+    <div class="uploadrow">
+      <input id="fileInput" type="file" accept="video/mp4,video/quicktime,video/webm" multiple>
+      <button id="uploadBtn" class="primary">Tải lên</button>
+    </div>
+    <div id="uploads"><p class="empty">Chưa có file nào.</p></div>
+  </section>
+
+  <footer>
+    <p>Giá Veo 3.1 API (10/2026): Lite $0.05–0.08/s · Fast $0.10–0.12/s · Standard $0.40/s. Clip 8s 1080p Fast ≈ $0.96.</p>
+  </footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
